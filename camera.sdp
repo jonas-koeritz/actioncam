@@ -1,0 +1,4 @@
+v=0
+s=ActionCamera
+m=video 5220 RTP/AVP 99
+a=rtpmap:99 H264/90000
