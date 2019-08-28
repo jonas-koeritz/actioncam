@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
+	"fmt"
 
 	"github.com/icza/bitio"
 )
@@ -11,6 +13,20 @@ type Header struct {
 	Magic       uint16
 	Length      uint16
 	MessageType uint32
+}
+
+func (h *Header) String() string {
+	return fmt.Sprintf("{ Header Magic=0x%X, Length=%d, MessageType=0x%X }", h.Magic, h.Length, h.MessageType)
+}
+
+// Message represents a complete message from/to the camera
+type Message struct {
+	Header  Header
+	Payload []byte
+}
+
+func (m *Message) String() string {
+	return fmt.Sprintf("{ Message Header=%s, Payload=\n%s\n }", m.Header, hex.Dump(m.Payload))
 }
 
 // StreamHeader is a live preview message header

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -27,11 +28,15 @@ func main() {
 			relay := CreateRTPRelay(net.ParseIP("127.0.0.1"), 5220)
 			defer relay.Stop()
 
-			camera := Camera{IPAddress: args[0], Port: (int)(port), Verbose: true}
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			defer camera.Disconnect()
 
 			log.Printf("Using Camera: %+v\n", camera)
 
-			camera.Connect(username, password)
+			camera.Connect()
+			camera.Login()
+			camera.StartPreviewStream()
+
 			bufio.NewReader(os.Stdin).ReadBytes('\n')
 		},
 	}
@@ -45,12 +50,20 @@ func main() {
 		Short: "List files stored on the cameras SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := Camera{IPAddress: args[0], Port: (int)(port), Verbose: false}
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, false)
+			defer camera.Disconnect()
 
-			camera.Connect(username, password)
-			camera.RequestFileList()
-			camera.WaitForMessage(0xA027)
-			//camera.StoredFiles
+			camera.Connect()
+			camera.Login()
+			files, err := camera.GetFileList()
+			if err != nil {
+				log.Printf("ERROR Receiving File List: %s\n", err)
+				return
+			}
+
+			for _, file := range files {
+				fmt.Printf("%s\t%d\n", file.Path, file.Size)
+			}
 		},
 	}
 
@@ -59,10 +72,13 @@ func main() {
 		Short: "Take a still image and save to SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := Camera{IPAddress: args[0], Port: (int)(port), Verbose: true}
-			camera.Connect(username, password)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			defer camera.Disconnect()
+
+			camera.Connect()
+			camera.Login()
+
 			camera.TakePicture()
-			camera.WaitForMessage(0xA039)
 		},
 	}
 
@@ -71,10 +87,13 @@ func main() {
 		Short: "Start recording video to SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := Camera{IPAddress: args[0], Port: (int)(port), Verbose: true}
-			camera.Connect(username, password)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			defer camera.Disconnect()
+
+			camera.Connect()
+			camera.Login()
+
 			camera.StartRecording()
-			camera.WaitForMessage(0xA03B)
 		},
 	}
 
@@ -83,10 +102,13 @@ func main() {
 		Short: "Stop recording video to SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := Camera{IPAddress: args[0], Port: (int)(port), Verbose: true}
-			camera.Connect(username, password)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			defer camera.Disconnect()
+
+			camera.Connect()
+			camera.Login()
+
 			camera.StopRecording()
-			camera.WaitForMessage(0xA03B)
 		},
 	}
 
@@ -95,9 +117,12 @@ func main() {
 		Short: "Send a raw command to the camera",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := Camera{IPAddress: args[1], Port: (int)(port), Verbose: true}
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			defer camera.Disconnect()
 
-			camera.Connect(username, password)
+			camera.Connect()
+			camera.Login()
+
 			command, err := hex.DecodeString(args[0])
 			if err != nil {
 				log.Printf("ERROR: %s\n", err)
@@ -107,13 +132,12 @@ func main() {
 			if len(command) >= 2 {
 				header := CreateCommandHeader(uint32(binary.BigEndian.Uint16(command[:2])))
 				payload := command[2:]
-				log.Printf("Waiting for Login to finish")
-				camera.WaitForMessage(0x0111)
 				packet := CreatePacket(header, payload)
 				log.Printf("Sending Command: %X\n", packet)
 				camera.SendPacket(packet)
 			}
 
+			log.Printf("Waiting for Data, press ENTER to quit")
 			bufio.NewReader(os.Stdin).ReadBytes('\n')
 		},
 	}
@@ -123,12 +147,19 @@ func main() {
 		Short: "List files stored on the cameras SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := Camera{IPAddress: args[0], Port: (int)(port), Verbose: false}
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			defer camera.Disconnect()
 
-			camera.Connect(username, password)
-			camera.RequestFileList()
-			camera.WaitForMessage(0xA027)
-			newestFile := camera.StoredFiles[len(camera.StoredFiles)-1].Path
+			camera.Connect()
+			camera.Login()
+
+			files, err := camera.GetFileList()
+			if err != nil {
+				log.Printf("ERROR Receiving File List: %s\n", err)
+				return
+			}
+
+			newestFile := files[len(files)-1].Path
 			url := "http://" + args[0] + newestFile
 			log.Printf("Downloading latest File: %s\n", url)
 			downloadFile(filepath.Base(newestFile), url)
