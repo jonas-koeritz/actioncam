@@ -39,6 +39,7 @@ const (
 	TAKE_PICTURE          = 0xA038
 	PICTURE_SAVED         = 0xA039
 	CONTROL_RECORDING     = 0xA03A
+	RECORD_COMMAND_ACCEPT = 0xA03B
 )
 
 const (
@@ -331,8 +332,27 @@ func (c *Camera) StartRecording() error {
 	if !c.isLoggedIn {
 		return errors.New("Camera Login required")
 	}
-	c.Log("Starting to record video")
-	return c.SendPacket(CreatePacket(CreateCommandHeader(CONTROL_RECORDING), []byte{0x01, 0x00, 0x00, 0x00}))
+
+	recordCommandAccept := make(chan bool, 1)
+
+	c.Handle(RECORD_COMMAND_ACCEPT, func(c *Camera, m *Message) (bool, error) {
+		c.Log("Started to record video")
+		recordCommandAccept <- true
+		return RemoveHandler, nil
+	})
+
+	c.Log("Requesting camera to start recording")
+	err := c.SendPacket(CreatePacket(CreateCommandHeader(CONTROL_RECORDING), []byte{0x01, 0x00, 0x00, 0x00}))
+	if err != nil {
+		return err
+	}
+
+	select {
+	case <-recordCommandAccept:
+		return nil
+	case <-time.After(5 * time.Second):
+		return errors.New("CONTROL_RECORDING request timed out")
+	}
 }
 
 // StopRecording stops recording video to SD-Card
@@ -340,8 +360,27 @@ func (c *Camera) StopRecording() error {
 	if !c.isLoggedIn {
 		return errors.New("Camera Login required")
 	}
-	c.Log("Stopping to record video")
-	return c.SendPacket(CreatePacket(CreateCommandHeader(CONTROL_RECORDING), []byte{0x00, 0x00, 0x00, 0x00}))
+
+	recordCommandAccept := make(chan bool, 1)
+
+	c.Handle(RECORD_COMMAND_ACCEPT, func(c *Camera, m *Message) (bool, error) {
+		c.Log("Stopping to record video")
+		recordCommandAccept <- true
+		return RemoveHandler, nil
+	})
+
+	c.Log("Requesting camera to stop recording")
+	err := c.SendPacket(CreatePacket(CreateCommandHeader(CONTROL_RECORDING), []byte{0x00, 0x00, 0x00, 0x00}))
+	if err != nil {
+		return err
+	}
+
+	select {
+	case <-recordCommandAccept:
+		return nil
+	case <-time.After(5 * time.Second):
+		return errors.New("CONTROL_RECORDING request timed out")
+	}
 }
 
 // Disconnect from the camera
