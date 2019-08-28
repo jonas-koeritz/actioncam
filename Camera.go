@@ -390,6 +390,11 @@ func (c *Camera) Disconnect() {
 	c.connection.Close()
 }
 
+// SetVerbose changes the verbosity setting of this camera object
+func (c *Camera) SetVerbose(verbose bool) {
+	c.verbose = verbose
+}
+
 func aliveRequestHandler(camera *Camera, message *Message) (bool, error) {
 	camera.Log("Received Alive Request")
 	responseHeader := CreateCommandHeader(0x0113) // Alive Response
