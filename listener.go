@@ -1,4 +1,4 @@
-package ipcamera
+package main
 
 import (
 	"bytes"
@@ -9,37 +9,43 @@ import (
 	"net"
 )
 
-// StreamListener holds information on the receiving stream listener
-type StreamListener struct {
-	close bool
+// RTPRelay holds information on the relaying stream listener
+type RTPRelay struct {
+	close      bool
+	targetIP   net.IP
+	targetPort int
 }
 
-// CreateStreamListener creates a UDP listener that handles live data from the camera
-func CreateStreamListener() StreamListener {
+// CreateRTPRelay creates a UDP listener that handles live data
+// from the camera and forwards it as an RTP stream
+func CreateRTPRelay(targetAddress net.IP, targetPort int) RTPRelay {
 	conn, err := net.ListenPacket("udp", ":6669")
 
 	if err != nil {
 		log.Printf("ERROR: %s\n", err)
 	}
 
-	streamListener := StreamListener{}
+	relay := RTPRelay{
+		targetIP:   targetAddress,
+		targetPort: targetPort,
+	}
 	if err != nil {
 		log.Printf("ERROR: %s\n", err)
 	}
 
-	go handleCameraStream(streamListener, conn)
+	go handleCameraStream(relay, conn)
 
-	return streamListener
+	return relay
 }
 
-func handleCameraStream(listener StreamListener, conn net.PacketConn) {
+func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 	buffer := make([]byte, 2048)
 	header := StreamHeader{}
 	var payload []byte
 
 	rtpTarget := net.UDPAddr{
-		IP:   net.ParseIP("127.0.0.1"),
-		Port: 5220,
+		IP:   relay.targetIP,
+		Port: relay.targetPort,
 	}
 	rtpSource, _ := net.ResolveUDPAddr("udp", "127.0.0.1:5000")
 	rtpConn, _ := net.DialUDP("udp", rtpSource, &rtpTarget)
@@ -88,13 +94,13 @@ func handleCameraStream(listener StreamListener, conn net.PacketConn) {
 			log.Printf("Received Unknown Message: %+v\n", header)
 			log.Printf("Payload:\n%s\n", hex.Dump(payload))
 		}
-		if listener.close {
+		if relay.close {
 			break
 		}
 	}
 }
 
-// Close stops listening for packets
-func (l *StreamListener) Close() {
-	l.close = true
+// Stop stops listening for packets
+func (r *RTPRelay) Stop() {
+	r.close = true
 }

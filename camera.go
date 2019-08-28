@@ -1,4 +1,4 @@
-package ipcamera
+package main
 
 import (
 	"encoding/binary"
