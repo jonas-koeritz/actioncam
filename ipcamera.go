@@ -28,7 +28,7 @@ func main() {
 			relay := CreateRTPRelay(net.ParseIP("127.0.0.1"), 5220)
 			defer relay.Stop()
 
-			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password)
 			defer camera.Disconnect()
 
 			log.Printf("Using Camera: %+v\n", camera)
@@ -50,8 +50,10 @@ func main() {
 		Short: "List files stored on the cameras SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, false)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password)
 			defer camera.Disconnect()
+
+			camera.SetVerbose(false)
 
 			camera.Connect()
 			camera.Login()
@@ -72,7 +74,7 @@ func main() {
 		Short: "Take a still image and save to SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password)
 			defer camera.Disconnect()
 
 			camera.Connect()
@@ -87,7 +89,7 @@ func main() {
 		Short: "Start recording video to SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password)
 			defer camera.Disconnect()
 
 			camera.Connect()
@@ -102,7 +104,7 @@ func main() {
 		Short: "Stop recording video to SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password)
 			defer camera.Disconnect()
 
 			camera.Connect()
@@ -117,7 +119,7 @@ func main() {
 		Short: "Send a raw command to the camera",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password)
 			defer camera.Disconnect()
 
 			camera.Connect()
@@ -147,7 +149,7 @@ func main() {
 		Short: "List files stored on the cameras SD-Card",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password, true)
+			camera := CreateCamera(net.ParseIP(args[0]), int(port), username, password)
 			defer camera.Disconnect()
 
 			camera.Connect()

@@ -56,14 +56,14 @@ type StoredFile struct {
 }
 
 // CreateCamera creates a new Camera instance
-func CreateCamera(ipAddress net.IP, port int, username, password string, verbose bool) *Camera {
+func CreateCamera(ipAddress net.IP, port int, username, password string) *Camera {
 	camera := &Camera{
 		ipAddress:       ipAddress,
 		port:            port,
 		username:        username,
 		password:        password,
 		messageHandlers: make(map[uint32][]MessageHandler, 0),
-		verbose:         verbose,
+		verbose:         true,
 	}
 	return camera
 }
