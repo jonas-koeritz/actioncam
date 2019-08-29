@@ -16,6 +16,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func connectAndLogin(ip net.IP, port int, username, password string, verbose bool) *libipcamera.Camera {
+	camera := libipcamera.CreateCamera(ip, port, username, password)
+	camera.SetVerbose(verbose)
+	camera.Connect()
+	camera.Login()
+	return camera
+}
+
 func main() {
 	var username string
 	var password string
@@ -36,15 +44,6 @@ func main() {
 			camera.StartPreviewStream()
 
 			bufio.NewReader(os.Stdin).ReadBytes('\n')
-		},
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			camera = libipcamera.CreateCamera(net.ParseIP(args[0]), int(port), username, password)
-			camera.SetVerbose(verbose)
-			camera.Connect()
-			camera.Login()
-		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			camera.Disconnect()
 		},
 	}
 
@@ -68,6 +67,12 @@ func main() {
 				fmt.Printf("%s\t%d\n", file.Path, file.Size)
 			}
 		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			camera.Disconnect()
+		},
 	}
 
 	var still = &cobra.Command{
@@ -76,6 +81,12 @@ func main() {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			camera.TakePicture()
+		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			camera.Disconnect()
 		},
 	}
 
@@ -86,6 +97,12 @@ func main() {
 		Run: func(cmd *cobra.Command, args []string) {
 			camera.StartRecording()
 		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			camera.Disconnect()
+		},
 	}
 
 	var stop = &cobra.Command{
@@ -95,11 +112,17 @@ func main() {
 		Run: func(cmd *cobra.Command, args []string) {
 			camera.StopRecording()
 		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			camera.Disconnect()
+		},
 	}
 
-	var version = &cobra.Command{
-		Use:   "version [Cameras IP Address]",
-		Short: "Retrieve software version information from the camera",
+	var firmware = &cobra.Command{
+		Use:   "firmware [Cameras IP Address]",
+		Short: "Retrieve firmware version information from the camera",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			firmware, err := camera.GetFirmwareInfo()
@@ -108,6 +131,12 @@ func main() {
 				return
 			}
 			log.Printf("Firmware Version: %s\n", firmware)
+		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			camera.Disconnect()
 		},
 	}
 
@@ -133,6 +162,12 @@ func main() {
 			log.Printf("Waiting for Data, press ENTER to quit")
 			bufio.NewReader(os.Stdin).ReadBytes('\n')
 		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			camera.Disconnect()
+		},
 	}
 
 	var fetch = &cobra.Command{
@@ -151,6 +186,12 @@ func main() {
 			log.Printf("Downloading latest File: %s\n", url)
 			downloadFile(filepath.Base(newestFile), url)
 		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			camera.Disconnect()
+		},
 	}
 
 	rootCmd.AddCommand(ls)
@@ -159,7 +200,7 @@ func main() {
 	rootCmd.AddCommand(stop)
 	rootCmd.AddCommand(fetch)
 	rootCmd.AddCommand(record)
-	rootCmd.AddCommand(version)
+	rootCmd.AddCommand(firmware)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Println(err)
