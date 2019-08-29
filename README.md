@@ -15,10 +15,14 @@ Go Library and command line tool for working with cheap action cameras.
 
 Supplying no additional command will start streaming a preview video stream to your local system.
 To view the video use the `camera.sdp` file and open it in a compatible player like VLC.
-The stream is a RTP stream sent to Port 5220 on localhost containing H.264 data in preview resolution as AVP Type 99.
+The stream is a RTP stream sent to Port 5220 on localhost containing H.264 data in preview resolution as AVP Type 99. Additionally it is possible to start a crude RTSP-Server that is able to serve a single client.
 
 ```
+# Start preview streaming via RTP
 actioncam <Camera IP>
+
+# Start RTSP server and stream preview to connecting
+actioncam rtsp <Camera IP>
 ```
 
 ### Shooting a still picture

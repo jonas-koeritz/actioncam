@@ -2,6 +2,7 @@ package rtsp
 
 import (
 	"bufio"
+	"crypto/md5"
 	"fmt"
 	"log"
 	"net"
@@ -92,6 +93,8 @@ func (s *Server) handleRequest(packet []string, conn net.Conn) {
 		}
 	}
 
+	session := fmt.Sprintf("%X", md5.Sum([]byte(conn.RemoteAddr().String())))
+
 	switch method {
 	case "OPTIONS":
 		writeStatus(conn, 200, "OK")
@@ -119,7 +122,7 @@ func (s *Server) handleRequest(packet []string, conn net.Conn) {
 		writeStatus(conn, 200, "OK")
 		replyCSeq(conn, headers)
 		writeHeader(conn, "Transport", headers["Transport"]+";ssrc=0")
-		writeHeader(conn, "Session", "1")
+		writeHeader(conn, "Session", session)
 		conn.Write([]byte("\r\n"))
 
 	case "PLAY":
@@ -128,7 +131,7 @@ func (s *Server) handleRequest(packet []string, conn net.Conn) {
 
 		writeStatus(conn, 200, "OK")
 		replyCSeq(conn, headers)
-		writeHeader(conn, "Session", "1")
+		writeHeader(conn, "Session", session)
 		writeHeader(conn, "RTP-Info", "url="+request[1]+";seq=0;rtptime=0")
 		conn.Write([]byte("\r\n"))
 	case "TEARDOWN":
@@ -136,6 +139,14 @@ func (s *Server) handleRequest(packet []string, conn net.Conn) {
 		writeStatus(conn, 200, "OK")
 		replyCSeq(conn, headers)
 		conn.Write([]byte("\r\n"))
+	case "RECORD":
+		s.camera.StartRecording()
+
+		writeStatus(conn, 200, "OK")
+		replyCSeq(conn, headers)
+		writeHeader(conn, "Session", session)
+		conn.Write([]byte("\r\n"))
+
 	default:
 		return
 	}
