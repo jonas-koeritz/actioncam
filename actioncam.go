@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	libipcamera "github.com/jonas-koeritz/libipcamera"
+	"github.com/jonas-koeritz/actioncam/libipcamera"
 	"github.com/spf13/cobra"
 )
 
