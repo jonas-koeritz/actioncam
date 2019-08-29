@@ -1,4 +1,4 @@
-# libipcamera
+# actioncam / libipcamera
 
 Go Library and command line tool for working with cheap action cameras.
 
@@ -6,7 +6,7 @@ Go Library and command line tool for working with cheap action cameras.
 
 | Vendor        | Model             | Firmware Version  | Compatibility     | Remarks   |
 |---------------|-------------------|-------------------|-------------------|-----------|
-| Campark       | ACT76 (Xtreme 2)  | r0.5              | Full (tested)     |           |
+| Campark       | ACT76 (Xtreme 2)  | v1.0 rc5          | Full (tested)     |           |
 | TecTecTec     | XPro2             | -                 | Full (untested)   |           |
 
 ## Usage Examples
@@ -18,7 +18,7 @@ To view the video use the `camera.sdp` file and open it in a compatible player l
 The stream is a RTP stream sent to Port 5220 on localhost containing H.264 data in preview resolution as AVP Type 99.
 
 ```
-ipcamera <Camera IP>
+actioncam <Camera IP>
 ```
 
 ### Shooting a still picture
@@ -26,7 +26,7 @@ ipcamera <Camera IP>
 To shoot a still picture and save it to SD-Card run the subcommand `still`.
 
 ```
-ipcamera still <Camera IP>
+actioncam still <Camera IP>
 ```
 
 ### Recording Video
@@ -35,10 +35,10 @@ To record full resolution video to SD-Card use the subcommands `record` and `sto
 
 ```
 # Start recording Video
-ipcamera record <Camera IP>
+actioncam record <Camera IP>
 
 # Stop recording Video
-ipcamera stop <Camera IP>
+actioncam stop <Camera IP>
 ```
 
 ### Fetch the list of files on the SD-Card and download the latest file
@@ -47,10 +47,10 @@ The camera can provide a list of files stored on the SD-Card, the `ipcamera` too
 
 ```
 # List files
-ipcamera ls <Camera IP>
+actioncam ls <Camera IP>
 
 # Download latest file
-ipcamera fetch <Camera IP>
+actioncam fetch <Camera IP>
 ```
 
 ### Send a RAW packet to the Camera
@@ -58,10 +58,10 @@ ipcamera fetch <Camera IP>
 It's possible to send RAW commands to the camera to test new commands and help reverse engineer the protocol.
 
 ```
-ipcamera cmd <RAW Command and Payload in HEX> <Camera IP>
+actioncam cmd <RAW Command and Payload in HEX> <Camera IP>
 
 # Example (Take a still image)
-ipcamera cmd 00A038 192.168.1.1
+actioncam cmd 00A038 192.168.1.1
 ```
 
 

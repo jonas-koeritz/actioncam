@@ -97,6 +97,20 @@ func main() {
 		},
 	}
 
+	var version = &cobra.Command{
+		Use:   "version [Cameras IP Address]",
+		Short: "Retrieve software version information from the camera",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			firmware, err := camera.GetFirmwareInfo()
+			if err != nil {
+				log.Printf("ERROR retrieving version info: %s\n", err)
+				return
+			}
+			log.Printf("Firmware Version: %s\n", firmware)
+		},
+	}
+
 	var cmd = &cobra.Command{
 		Use:   "cmd [RAW Command] [Cameras IP Address]",
 		Short: "Send a raw command to the camera",
@@ -145,6 +159,7 @@ func main() {
 	rootCmd.AddCommand(stop)
 	rootCmd.AddCommand(fetch)
 	rootCmd.AddCommand(record)
+	rootCmd.AddCommand(version)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Println(err)
