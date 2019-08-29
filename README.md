@@ -61,7 +61,7 @@ It's possible to send RAW commands to the camera to test new commands and help r
 actioncam cmd <RAW Command and Payload in HEX> <Camera IP>
 
 # Example (Take a still image)
-actioncam cmd 00A038 192.168.1.1
+actioncam cmd A038 192.168.1.1
 ```
 
 
