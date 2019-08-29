@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"github.com/jonas-koeritz/actioncam/libipcamera"
+	"github.com/jonas-koeritz/actioncam/rtsp"
 	"github.com/spf13/cobra"
 )
 
@@ -140,6 +141,28 @@ func main() {
 		},
 	}
 
+	var rtsp = &cobra.Command{
+		Use:   "rtsp [Cameras IP Address]",
+		Short: "Start an RTSP-Server serving the cameras preview.",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+
+			rtspServer := rtsp.CreateServer("127.0.0.1", 8554, camera)
+			log.Printf("Created RTSP Server\n")
+			err := rtspServer.ListenAndServe()
+
+			if err != nil {
+				log.Printf("ERROR starting RTSP Server: %s\n", err)
+			}
+		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			camera.Disconnect()
+		},
+	}
+
 	var cmd = &cobra.Command{
 		Use:   "cmd [RAW Command] [Cameras IP Address]",
 		Short: "Send a raw command to the camera",
@@ -201,6 +224,7 @@ func main() {
 	rootCmd.AddCommand(fetch)
 	rootCmd.AddCommand(record)
 	rootCmd.AddCommand(firmware)
+	rootCmd.AddCommand(rtsp)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Println(err)

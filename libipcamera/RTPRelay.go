@@ -14,11 +14,12 @@ type RTPRelay struct {
 	close      bool
 	targetIP   net.IP
 	targetPort int
+	listener   net.PacketConn
 }
 
 // CreateRTPRelay creates a UDP listener that handles live data
 // from the camera and forwards it as an RTP stream
-func CreateRTPRelay(targetAddress net.IP, targetPort int) RTPRelay {
+func CreateRTPRelay(targetAddress net.IP, targetPort int) *RTPRelay {
 	conn, err := net.ListenPacket("udp", ":6669")
 
 	if err != nil {
@@ -28,6 +29,7 @@ func CreateRTPRelay(targetAddress net.IP, targetPort int) RTPRelay {
 	relay := RTPRelay{
 		targetIP:   targetAddress,
 		targetPort: targetPort,
+		listener:   conn,
 	}
 	if err != nil {
 		log.Printf("ERROR: %s\n", err)
@@ -35,7 +37,7 @@ func CreateRTPRelay(targetAddress net.IP, targetPort int) RTPRelay {
 
 	go handleCameraStream(relay, conn)
 
-	return relay
+	return &relay
 }
 
 func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
@@ -47,8 +49,11 @@ func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 		IP:   relay.targetIP,
 		Port: relay.targetPort,
 	}
-	rtpSource, _ := net.ResolveUDPAddr("udp", "127.0.0.1:5000")
-	rtpConn, _ := net.DialUDP("udp", rtpSource, &rtpTarget)
+	rtpSource, _ := net.ResolveUDPAddr("udp", "127.0.0.1")
+	rtpConn, err := net.DialUDP("udp", rtpSource, &rtpTarget)
+	if err != nil {
+		log.Printf("ERROR creating RTP sender: %s\n", err)
+	}
 
 	var sequenceNumber uint16
 	var elapsed uint32
@@ -56,6 +61,11 @@ func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 	frameBuffer := []byte{}
 
 	for {
+		if relay.close {
+			rtpConn.Close()
+			break
+		}
+
 		conn.ReadFrom(buffer)
 		packetReader := bytes.NewReader(buffer)
 		binary.Read(packetReader, binary.BigEndian, &header)
@@ -94,13 +104,12 @@ func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 			log.Printf("Received Unknown Message: %+v\n", header)
 			log.Printf("Payload:\n%s\n", hex.Dump(payload))
 		}
-		if relay.close {
-			break
-		}
 	}
+	rtpConn.Close()
 }
 
 // Stop stops listening for packets
 func (r *RTPRelay) Stop() {
+	r.listener.Close()
 	r.close = true
 }
