@@ -163,7 +163,7 @@ func main() {
 			bufio.NewReader(os.Stdin).ReadBytes('\n')
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			camera = connectAndLogin(net.ParseIP(args[1]), int(port), username, password, verbose)
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
