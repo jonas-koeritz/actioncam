@@ -26,7 +26,7 @@ type Message struct {
 }
 
 func (m *Message) String() string {
-	return fmt.Sprintf("{ Message Header=%s, Payload=\n%s\n }", m.Header, hex.Dump(m.Payload))
+	return fmt.Sprintf("{ Message Header=%s, Payload=\n%s\n }", m.Header.String(), hex.Dump(m.Payload))
 }
 
 // StreamHeader is a live preview message header
