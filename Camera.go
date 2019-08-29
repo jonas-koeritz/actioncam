@@ -1,4 +1,4 @@
-package main
+package libipcamera
 
 import (
 	"encoding/binary"
@@ -83,35 +83,30 @@ func (c *Camera) Connect() {
 	c.HandleFirst(0x0112, aliveRequestHandler)
 
 	go c.handleConnection()
-
-	c.Login()
 }
 
 // Login will try to login to the camera control service
 func (c *Camera) Login() error {
-	loginAccept := make(chan bool, 1)
+	loginAccept := make(chan bool, 0)
+
 	c.Handle(LOGIN_ACCEPT, func(c *Camera, m *Message) (bool, error) {
 		_, err := loginResultHandler(c, m)
 		if err != nil {
-			return false, err
+			return RemoveHandler, err
 		}
 		loginAccept <- true
-		return KeepHandler, nil
+		return RemoveHandler, nil
 	})
 
 	//TODO: Handle login error messages
 	c.SendPacket(CreateLoginPacket(c.username, c.password))
 
 	select {
-	case loginSuccess := <-loginAccept:
-		if loginSuccess {
-			return nil
-		}
+	case <-loginAccept:
+		return nil
 	case <-time.After(5 * time.Second):
 		return errors.New("Login request timed out")
 	}
-
-	return errors.New("Login failed")
 }
 
 // IsConnected returns true if the camera connection has not been disconnected
@@ -124,10 +119,16 @@ func (c *Camera) handleConnection() {
 	var payload []byte
 
 	for {
+		if c.disconnect {
+			break
+		}
+
 		// Read the header from the wire
 		err := binary.Read(c.connection, binary.BigEndian, &header)
 		if err != nil {
-			log.Printf("ERROR Reading from Camera: %s\n", err)
+			if !c.disconnect {
+				log.Printf("ERROR Reading from Camera: %s\n", err)
+			}
 			break
 		}
 
@@ -164,7 +165,7 @@ func (c *Camera) handleConnection() {
 		remainingMessageHandlers := make([]MessageHandler, 0)
 		for _, handler := range c.messageHandlers[header.MessageType] {
 			remove, err := handler(c, message)
-			if !remove {
+			if remove == KeepHandler {
 				remainingMessageHandlers = append(remainingMessageHandlers, handler)
 			}
 
@@ -175,12 +176,8 @@ func (c *Camera) handleConnection() {
 		}
 		// replace handlers with all but the one-shot handlers
 		c.messageHandlers[header.MessageType] = remainingMessageHandlers
-
-		if c.disconnect {
-			break
-		}
 	}
-	c.Log("Disconnecting")
+	c.Log("Disconnected")
 	c.connected = false
 }
 
@@ -210,7 +207,11 @@ func (c *Camera) addHandler(messageType uint32, handleFunc MessageHandler, prepe
 // Log will write to stdout if this camera has been set to be verbose
 func (c *Camera) Log(format string, data ...interface{}) {
 	if c.verbose {
-		log.Printf(format+"\n", data)
+		if data != nil {
+			log.Printf(format+"\n", data)
+		} else {
+			log.Printf(format + "\n")
+		}
 	}
 }
 
@@ -396,10 +397,8 @@ func (c *Camera) SetVerbose(verbose bool) {
 }
 
 func aliveRequestHandler(camera *Camera, message *Message) (bool, error) {
-	camera.Log("Received Alive Request")
 	responseHeader := CreateCommandHeader(0x0113) // Alive Response
 	response := CreatePacket(responseHeader, []byte{})
-	camera.Log("Sending Alive Response")
 	return KeepHandler, camera.SendPacket(response)
 }
 
