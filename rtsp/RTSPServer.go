@@ -89,7 +89,7 @@ func (s *Server) handleRequest(packet []string, conn net.Conn) {
 	for _, header := range packet[1:] {
 		parts := strings.Split(header, ":")
 		if len(parts) >= 2 {
-			headers[parts[0]] = strings.Join(parts[1:], ":")
+			headers[parts[0]] = strings.TrimSpace(strings.Join(parts[1:], ":"))
 		}
 	}
 
@@ -105,7 +105,7 @@ func (s *Server) handleRequest(packet []string, conn net.Conn) {
 		replyCSeq(conn, headers)
 		writeHeader(conn, "Content-Type", "application/sdp")
 		writeHeader(conn, "Content-Length", fmt.Sprintf("%d", len(s.sdp)))
-		conn.Write([]byte(fmt.Sprintf("\r\n%s\r\n", s.sdp)))
+		conn.Write([]byte(fmt.Sprintf("\r\n%s", s.sdp)))
 	case "SETUP":
 		transportDescription := strings.Split(headers["Transport"], ";")
 		rtpDescription := transportDescription[len(transportDescription)-1]
