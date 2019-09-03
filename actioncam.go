@@ -97,6 +97,9 @@ func main() {
 	rootCmd.PersistentFlags().StringVarP(&cpuprofile, "cpuprofile", "c", "", "Profile CPU usage")
 	rootCmd.PersistentFlags().StringVarP(&memoryprofile, "memoryprofile", "m", "", "Profile memory usage")
 
+	rootCmd.PersistentFlags().MarkHidden("cpuprofile")
+	rootCmd.PersistentFlags().MarkHidden("memoryprofile")
+
 	var ls = &cobra.Command{
 		Use:   "ls [Cameras IP Address]",
 		Short: "List files stored on the cameras SD-Card",
