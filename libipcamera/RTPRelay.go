@@ -42,6 +42,8 @@ func CreateRTPRelay(targetAddress net.IP, targetPort int) *RTPRelay {
 
 func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 	buffer := make([]byte, 2048)
+	packetReader := bytes.NewReader(buffer)
+
 	header := StreamHeader{}
 	var payload []byte
 
@@ -58,7 +60,8 @@ func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 	var sequenceNumber uint16
 	var elapsed uint32
 
-	frameBuffer := []byte{}
+	frameBuffer := bytes.Buffer{}
+	packetBuffer := bytes.Buffer{}
 
 	for {
 		if relay.close {
@@ -67,18 +70,20 @@ func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 		}
 
 		conn.ReadFrom(buffer)
-		packetReader := bytes.NewReader(buffer)
+		packetReader.Reset(buffer)
+
 		binary.Read(packetReader, binary.BigEndian, &header)
 
 		if header.Magic != 0xBCDE {
 			log.Printf("Received message with invalid magic (%x).", header.Magic)
 			break
 		}
+
 		if header.Length > 0 {
 			payload = make([]byte, header.Length)
-			bytesRead, err := io.ReadFull(packetReader, payload)
+			_, err := io.ReadFull(packetReader, payload)
 			if err != nil {
-				log.Printf("Read Error: %s, %d bytes\n", err, bytesRead)
+				log.Printf("Read Error: %s\n", err)
 				break
 			}
 		} else {
@@ -87,19 +92,26 @@ func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 
 		switch header.MessageType {
 		case 0x0001: // H.264 Data
-			frameBuffer = append(frameBuffer, payload...)
+			frameBuffer.Write(payload)
 		case 0x0002: // Time
-			packet := bytes.Buffer{}
-			packet.Write([]byte{0x80, 0x63})
-			binary.Write(&packet, binary.BigEndian, sequenceNumber)
-			binary.Write(&packet, binary.BigEndian, (uint32)(elapsed*90))
-			binary.Write(&packet, binary.BigEndian, (uint64(0)))
-			packet.Write(frameBuffer)
-			rtpConn.Write(packet.Bytes())
-			frameBuffer = []byte{}
+			// Append the Framebuffer
+			packetBuffer.Write(frameBuffer.Bytes())
+
+			// Send out the packet
+			rtpConn.Write(packetBuffer.Bytes())
+
+			// Prepare the next packet
+			packetBuffer.Reset()
+			packetBuffer.Write([]byte{0x80, 0x63})
+			binary.Write(&packetBuffer, binary.BigEndian, sequenceNumber+1)
+			binary.Write(&packetBuffer, binary.BigEndian, (uint32)(elapsed*90))
+			binary.Write(&packetBuffer, binary.BigEndian, (uint64(0)))
+
+			// Reset the Framebuffer
+			frameBuffer.Reset()
 			sequenceNumber++
+
 			elapsed = binary.LittleEndian.Uint32(payload[12:])
-			//log.Printf("Elapsed: %d (%x)\n", elapsed, payload[12:])
 		default:
 			log.Printf("Received Unknown Message: %+v\n", header)
 			log.Printf("Payload:\n%s\n", hex.Dump(payload))

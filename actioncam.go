@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 
 	"github.com/jonas-koeritz/actioncam/libipcamera"
 	"github.com/jonas-koeritz/actioncam/rtsp"
@@ -30,6 +32,10 @@ func main() {
 	var password string
 	var port int16
 	var verbose bool
+	var cpuprofile string
+	var memoryprofile string
+
+	var cpuprofileFile *os.File
 
 	var camera *libipcamera.Camera
 
@@ -46,11 +52,41 @@ func main() {
 
 			bufio.NewReader(os.Stdin).ReadBytes('\n')
 		},
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if cpuprofile != "" {
+				cpuprofileFile, err := os.Create(cpuprofile)
+				if err != nil {
+					log.Printf("Could not create CPU profiling file: %s\n", err)
+					return
+				}
+				err = pprof.StartCPUProfile(cpuprofileFile)
+				if err != nil {
+					log.Printf("Could not start CPU profiling: %s\n", err)
+				}
+			}
+		},
 		PreRun: func(cmd *cobra.Command, args []string) {
 			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
+		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			pprof.StopCPUProfile()
+			cpuprofileFile.Close()
+
+			runtime.GC()
+			if memoryprofile != "" {
+				f, err := os.Create(memoryprofile)
+				if err != nil {
+					log.Printf("Could not create Memory profiling file: %s\n", err)
+					return
+				}
+				err = pprof.WriteHeapProfile(f)
+				if err != nil {
+					log.Printf("Could not start Memory profiling: %s\n", err)
+				}
+			}
 		},
 	}
 
@@ -58,6 +94,8 @@ func main() {
 	rootCmd.PersistentFlags().StringVarP(&username, "username", "u", "admin", "Specify the camera username")
 	rootCmd.PersistentFlags().StringVarP(&password, "password", "p", "12345", "Specify the camera password")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Print verbose output")
+	rootCmd.PersistentFlags().StringVarP(&cpuprofile, "cpuprofile", "c", "", "Profile CPU usage")
+	rootCmd.PersistentFlags().StringVarP(&memoryprofile, "memoryprofile", "m", "", "Profile memory usage")
 
 	var ls = &cobra.Command{
 		Use:   "ls [Cameras IP Address]",
