@@ -42,7 +42,7 @@ func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "ipcamera [Cameras IP Address]",
 		Short: "ipcamera is a tool to stream the video preview of cheap action cameras without the mobile application",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			defer camera.Disconnect()
 			relay := libipcamera.CreateRTPRelay(net.ParseIP("127.0.0.1"), 5220)
@@ -66,7 +66,11 @@ func main() {
 			}
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			if len(args) == 0 {
+				camera = connectAndLogin(discoverCamera(verbose), int(port), username, password, verbose)
+			} else {
+				camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
@@ -103,7 +107,7 @@ func main() {
 	var ls = &cobra.Command{
 		Use:   "ls [Cameras IP Address]",
 		Short: "List files stored on the cameras SD-Card",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			files, err := camera.GetFileList()
 			if err != nil {
@@ -116,22 +120,44 @@ func main() {
 			}
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			if len(args) == 0 {
+				camera = connectAndLogin(discoverCamera(verbose), int(port), username, password, verbose)
+			} else {
+				camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
 		},
 	}
 
+	var discover = &cobra.Command{
+		Use:   "discover",
+		Short: "Try to discover a camera by sending UDP broadcasts",
+		Args:  cobra.MaximumNArgs(0),
+		Run: func(cmd *cobra.Command, args []string) {
+			cameraIP, err := libipcamera.AutodiscoverCamera(verbose)
+			if err != nil {
+				log.Printf("ERROR Discovering Camera: %s\n", err)
+			}
+
+			log.Printf("Found Camera: %+v\n", cameraIP)
+		},
+	}
+
 	var still = &cobra.Command{
 		Use:   "still [Cameras IP Address]",
 		Short: "Take a still image and save to SD-Card",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			camera.TakePicture()
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			if len(args) == 0 {
+				camera = connectAndLogin(discoverCamera(verbose), int(port), username, password, verbose)
+			} else {
+				camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
@@ -141,12 +167,16 @@ func main() {
 	var record = &cobra.Command{
 		Use:   "record [Cameras IP Address]",
 		Short: "Start recording video to SD-Card",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			camera.StartRecording()
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			if len(args) == 0 {
+				camera = connectAndLogin(discoverCamera(verbose), int(port), username, password, verbose)
+			} else {
+				camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
@@ -156,12 +186,16 @@ func main() {
 	var stop = &cobra.Command{
 		Use:   "stop [Cameras IP Address]",
 		Short: "Stop recording video to SD-Card",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			camera.StopRecording()
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			if len(args) == 0 {
+				camera = connectAndLogin(discoverCamera(verbose), int(port), username, password, verbose)
+			} else {
+				camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
@@ -171,7 +205,7 @@ func main() {
 	var firmware = &cobra.Command{
 		Use:   "firmware [Cameras IP Address]",
 		Short: "Retrieve firmware version information from the camera",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			firmware, err := camera.GetFirmwareInfo()
 			if err != nil {
@@ -181,7 +215,11 @@ func main() {
 			log.Printf("Firmware Version: %s\n", firmware)
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			if len(args) == 0 {
+				camera = connectAndLogin(discoverCamera(verbose), int(port), username, password, verbose)
+			} else {
+				camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
@@ -191,7 +229,7 @@ func main() {
 	var rtsp = &cobra.Command{
 		Use:   "rtsp [Cameras IP Address]",
 		Short: "Start an RTSP-Server serving the cameras preview.",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 
 			rtspServer := rtsp.CreateServer("127.0.0.1", 8554, camera)
@@ -203,7 +241,11 @@ func main() {
 			}
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			if len(args) == 0 {
+				camera = connectAndLogin(discoverCamera(verbose), int(port), username, password, verbose)
+			} else {
+				camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
@@ -213,7 +255,7 @@ func main() {
 	var cmd = &cobra.Command{
 		Use:   "cmd [RAW Command] [Cameras IP Address]",
 		Short: "Send a raw command to the camera",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
 			command, err := hex.DecodeString(args[0])
 			if err != nil {
@@ -233,7 +275,11 @@ func main() {
 			bufio.NewReader(os.Stdin).ReadBytes('\n')
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[1]), int(port), username, password, verbose)
+			if len(args) != 2 {
+				camera = connectAndLogin(discoverCamera(verbose), int(port), username, password, verbose)
+			} else {
+				camera = connectAndLogin(net.ParseIP(args[1]), int(port), username, password, verbose)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
@@ -243,7 +289,7 @@ func main() {
 	var fetch = &cobra.Command{
 		Use:   "fetch [Cameras IP Address]",
 		Short: "List files stored on the cameras SD-Card",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			files, err := camera.GetFileList()
 			if err != nil {
@@ -257,7 +303,11 @@ func main() {
 			downloadFile(filepath.Base(newestFile), url)
 		},
 		PreRun: func(cmd *cobra.Command, args []string) {
-			camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			if len(args) == 0 {
+				camera = connectAndLogin(discoverCamera(verbose), int(port), username, password, verbose)
+			} else {
+				camera = connectAndLogin(net.ParseIP(args[0]), int(port), username, password, verbose)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			camera.Disconnect()
@@ -272,6 +322,7 @@ func main() {
 	rootCmd.AddCommand(record)
 	rootCmd.AddCommand(firmware)
 	rootCmd.AddCommand(rtsp)
+	rootCmd.AddCommand(discover)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Println(err)
@@ -298,4 +349,15 @@ func downloadFile(filepath string, url string) error {
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	return err
+}
+
+func discoverCamera(verbose bool) net.IP {
+	cameraIP, err := libipcamera.AutodiscoverCamera(verbose)
+	if err != nil {
+		log.Printf("ERROR during Autodiscover: %s\n", err)
+	}
+	if verbose {
+		log.Printf("Found Camera: %s\n", cameraIP)
+	}
+	return cameraIP
 }
