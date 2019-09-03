@@ -23,6 +23,9 @@ actioncam <Camera IP>
 
 # Start RTSP server and stream preview to connecting
 actioncam rtsp <Camera IP>
+
+# Use mplayer to stream a low-latency preview (ffmpeg and VLC introduce significant delay)
+mplayer -nocache rtsp://127.0.0.1:8554
 ```
 
 ### Shooting a still picture
