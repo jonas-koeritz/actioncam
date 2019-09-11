@@ -74,4 +74,4 @@ actioncam cmd A038 192.168.1.1
 
 ## Limitations
 
-On all tested cameras, there can only be one client connected to the camera at a time. This means that to take a picture you have to stop a client that is currently running a preview stream. To help with that issue the command line client will open a socket in the future that can accept commands to control the camera while previewing the video.
+On all tested cameras, there can only be one client connected to the camera at any given time. This means that to take a picture you have to stop a client that is currently running a preview stream. ~~To help with that issue the command line client will open a socket in the future that can accept commands to control the camera while previewing the video.~~ (if this feature is really needed this could be implemented but the utility should be simple and without many side-effects).
