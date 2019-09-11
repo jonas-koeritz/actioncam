@@ -61,7 +61,7 @@ func CreateCommandHeader(command uint32) Header {
 
 // CreateLoginPacket creates a Login packet to be sent to the camera
 func CreateLoginPacket(username, password string) []byte {
-	header := CreateCommandHeader(0x00000110) // Login
+	header := CreateCommandHeader(LOGIN) // Login
 	payload := make([]byte, 128)
 	copy(payload, []byte(username))
 	copy(payload[64:], []byte(password))

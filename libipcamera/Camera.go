@@ -30,6 +30,7 @@ type Camera struct {
 type MessageHandler func(camera *Camera, message *Message) (bool, error)
 
 const (
+	LOGIN                 = 0x0110
 	LOGIN_ACCEPT          = 0x0111
 	START_PREVIEW         = 0x01FF
 	REQUEST_FILE_LIST     = 0xA025
