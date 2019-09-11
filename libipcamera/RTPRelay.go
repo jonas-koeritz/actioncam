@@ -44,7 +44,7 @@ func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 	buffer := make([]byte, 2048)
 	packetReader := bytes.NewReader(buffer)
 
-	header := StreamHeader{}
+	header := streamHeader{}
 	var payload []byte
 
 	rtpTarget := net.UDPAddr{

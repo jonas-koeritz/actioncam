@@ -29,8 +29,8 @@ func (m *Message) String() string {
 	return fmt.Sprintf("{ Message\n\tHeader=%s,\n\tPayload=\n%s\n}", m.Header.String(), hex.Dump(m.Payload))
 }
 
-// StreamHeader is a live preview message header
-type StreamHeader struct {
+// streamHeader is a live preview message header
+type streamHeader struct {
 	Magic          uint16
 	Length         uint16
 	SequenceNumber uint16
