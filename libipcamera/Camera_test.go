@@ -30,3 +30,14 @@ func ExampleCreateCamera() {
 		fmt.Printf("Failed to take a picture: %s\n", err)
 	}
 }
+
+func ExampleCreatePacket() {
+	// Prepare a Header
+	header := CreateCommandHeader(TAKE_PICTURE)
+	payload := []byte{}
+
+	// Create the packet
+	packet := CreatePacket(header, payload)
+
+	fmt.Printf("Packet Data: %X\n", packet)
+}
