@@ -32,6 +32,8 @@ type MessageHandler func(camera *Camera, message *Message) (bool, error)
 const (
 	LOGIN                 = 0x0110
 	LOGIN_ACCEPT          = 0x0111
+	ALIVE_REQUEST         = 0x0112
+	ALIVE_RESPONSE        = 0x0113
 	START_PREVIEW         = 0x01FF
 	REQUEST_FILE_LIST     = 0xA025
 	FILE_LIST_CONTENT     = 0xA026
@@ -81,7 +83,7 @@ func (c *Camera) Connect() {
 	}
 	c.connection = conn
 
-	c.HandleFirst(0x0112, aliveRequestHandler)
+	c.HandleFirst(ALIVE_REQUEST, aliveRequestHandler)
 
 	go c.handleConnection()
 }
@@ -398,7 +400,7 @@ func (c *Camera) SetVerbose(verbose bool) {
 }
 
 func aliveRequestHandler(camera *Camera, message *Message) (bool, error) {
-	responseHeader := CreateCommandHeader(0x0113) // Alive Response
+	responseHeader := CreateCommandHeader(ALIVE_RESPONSE)
 	response := CreatePacket(responseHeader, []byte{})
 	return KeepHandler, camera.SendPacket(response)
 }
