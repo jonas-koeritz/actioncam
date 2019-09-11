@@ -40,4 +40,6 @@ func ExampleCreatePacket() {
 	packet := CreatePacket(header, payload)
 
 	fmt.Printf("Packet Data: %X\n", packet)
+
+	// Output: Packet Data: ABCD00000000A038
 }
