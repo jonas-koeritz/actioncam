@@ -132,7 +132,7 @@ func (s *Server) handleRequest(packet []string, conn net.Conn) {
 		writeStatus(conn, 200, "OK")
 		replyCSeq(conn, headers)
 		writeHeader(conn, "Session", session)
-		writeHeader(conn, "RTP-Info", "url="+request[1]+";seq=0;rtptime=0")
+		writeHeader(conn, "RTP-Info", "url="+request[1]+";seq=10;rtptime=10")
 		conn.Write([]byte("\r\n"))
 	case "TEARDOWN":
 		s.rtpRelay.Stop()

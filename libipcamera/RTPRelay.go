@@ -104,7 +104,7 @@ func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 			packetBuffer.Reset()
 			packetBuffer.Write([]byte{0x80, 0x63})
 			binary.Write(&packetBuffer, binary.BigEndian, sequenceNumber+1)
-			binary.Write(&packetBuffer, binary.BigEndian, (uint32)(elapsed))
+			binary.Write(&packetBuffer, binary.BigEndian, (uint32)(elapsed)*90)
 			binary.Write(&packetBuffer, binary.BigEndian, (uint64(0)))
 
 			// Reset the Framebuffer
