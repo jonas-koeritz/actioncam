@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
@@ -20,10 +22,15 @@ import (
 )
 
 func connectAndLogin(ip net.IP, port int, username, password string, verbose bool) *libipcamera.Camera {
-	camera := libipcamera.CreateCamera(ip, port, username, password)
+	camera, err := libipcamera.CreateCamera(ip, port, username, password)
+	if err != nil {
+		log.Printf("ERROR instantiating camera: %s\n", err)
+		os.Exit(1)
+	}
 	camera.SetVerbose(verbose)
 	camera.Connect()
 	camera.Login()
+
 	return camera
 }
 
@@ -39,13 +46,15 @@ func main() {
 
 	var camera *libipcamera.Camera
 
+	var applicationContext context.Context
+
 	var rootCmd = &cobra.Command{
 		Use:   "actioncam [Cameras IP Address]",
 		Short: "actioncam is a tool to stream the video preview of cheap action cameras without the mobile application",
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			defer camera.Disconnect()
-			relay := libipcamera.CreateRTPRelay(net.ParseIP("127.0.0.1"), 5220)
+			relay := libipcamera.CreateRTPRelay(applicationContext, net.ParseIP("127.0.0.1"), 5220)
 			defer relay.Stop()
 
 			camera.StartPreviewStream()
@@ -53,6 +62,18 @@ func main() {
 			bufio.NewReader(os.Stdin).ReadBytes('\n')
 		},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			signalChannel := make(chan os.Signal)
+			signal.Notify(signalChannel, os.Interrupt)
+			var cancel context.CancelFunc
+			applicationContext, cancel = context.WithCancel(context.Background())
+			go func(cancel context.CancelFunc) {
+				select {
+				case sig := <-signalChannel:
+					log.Printf("Got signal %s, exiting...\n", sig)
+					cancel()
+				}
+			}(cancel)
+
 			if cpuprofile != "" {
 				cpuprofileFile, err := os.Create(cpuprofile)
 				if err != nil {
@@ -232,8 +253,9 @@ func main() {
 		Short: "Start an RTSP-Server serving the cameras preview.",
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			rtspServer := rtsp.CreateServer(applicationContext, "127.0.0.1", 8554, camera)
+			defer rtspServer.Stop()
 
-			rtspServer := rtsp.CreateServer("127.0.0.1", 8554, camera)
 			log.Printf("Created RTSP Server\n")
 			err := rtspServer.ListenAndServe()
 

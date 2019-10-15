@@ -13,6 +13,8 @@ var targetPorts = []int{22600, 21600}
 // AutodiscoverCamera will try to find a camera using UDP Broadcasts
 func AutodiscoverCamera(verbose bool) (net.IP, error) {
 	conn, err := net.ListenPacket("udp", ":22601")
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+
 	if err != nil {
 		return nil, err
 	}

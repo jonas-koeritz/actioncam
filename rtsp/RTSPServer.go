@@ -2,6 +2,7 @@ package rtsp
 
 import (
 	"bufio"
+	"context"
 	"crypto/md5"
 	"fmt"
 	"log"
@@ -22,10 +23,11 @@ type Server struct {
 	rtpRelay      *libipcamera.RTPRelay
 	camera        *libipcamera.Camera
 	sdp           string
+	context       context.Context
 }
 
 // CreateServer creates a new Server instance
-func CreateServer(localIP string, port int, camera *libipcamera.Camera) *Server {
+func CreateServer(ctx context.Context, localIP string, port int, camera *libipcamera.Camera) *Server {
 	server := &Server{
 		localIP:       localIP,
 		localPort:     port,
@@ -33,6 +35,7 @@ func CreateServer(localIP string, port int, camera *libipcamera.Camera) *Server 
 		remoteRTPPort: 0,
 		remoteIP:      "",
 		sdp:           "v=0\r\ns=ActionCamera\r\nm=video 0 RTP/AVP 99\r\na=rtpmap:99 H264/90000",
+		context:       ctx,
 	}
 	return server
 }
@@ -49,14 +52,20 @@ func (s *Server) ListenAndServe() error {
 	log.Printf("RTSP Server waiting for connections on %s:%d\n", s.localIP, s.localPort)
 
 	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Printf("ERROR accepting connection: %s\n", err)
+		select {
+		case <-s.context.Done():
+			listener.Close()
+			break
+		default:
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Printf("ERROR accepting connection: %s\n", err)
+			}
+
+			log.Printf("Accepted new RTSP Client %s\n", conn.RemoteAddr().String())
+
+			go s.handleClient(conn)
 		}
-
-		log.Printf("Accepted new RTSP Client %s\n", conn.RemoteAddr().String())
-
-		go s.handleClient(conn)
 	}
 }
 
@@ -126,7 +135,7 @@ func (s *Server) handleRequest(packet []string, conn net.Conn) {
 		conn.Write([]byte("\r\n"))
 
 	case "PLAY":
-		s.rtpRelay = libipcamera.CreateRTPRelay(net.ParseIP(s.remoteIP), s.remoteRTPPort)
+		s.rtpRelay = libipcamera.CreateRTPRelay(s.context, net.ParseIP(s.remoteIP), s.remoteRTPPort)
 		s.camera.StartPreviewStream()
 
 		writeStatus(conn, 200, "OK")

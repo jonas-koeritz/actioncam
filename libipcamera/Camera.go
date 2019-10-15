@@ -61,7 +61,10 @@ type StoredFile struct {
 }
 
 // CreateCamera creates a new Camera instance
-func CreateCamera(ipAddress net.IP, port int, username, password string) *Camera {
+func CreateCamera(ipAddress net.IP, port int, username, password string) (*Camera, error) {
+	if ipAddress == nil {
+		return nil, errors.New("Cannot create camera without an IP-Address")
+	}
 	camera := &Camera{
 		ipAddress:       ipAddress,
 		port:            port,
@@ -70,7 +73,7 @@ func CreateCamera(ipAddress net.IP, port int, username, password string) *Camera
 		messageHandlers: make(map[uint32][]MessageHandler, 0),
 		verbose:         true,
 	}
-	return camera
+	return camera, nil
 }
 
 // Connect to the camera and start responding to keepalive packets
