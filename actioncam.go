@@ -40,8 +40,8 @@ func main() {
 	var camera *libipcamera.Camera
 
 	var rootCmd = &cobra.Command{
-		Use:   "ipcamera [Cameras IP Address]",
-		Short: "ipcamera is a tool to stream the video preview of cheap action cameras without the mobile application",
+		Use:   "actioncam [Cameras IP Address]",
+		Short: "actioncam is a tool to stream the video preview of cheap action cameras without the mobile application",
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			defer camera.Disconnect()
@@ -92,6 +92,7 @@ func main() {
 				}
 			}
 		},
+		Version: "0.2.2",
 	}
 
 	rootCmd.PersistentFlags().Int16VarP(&port, "port", "P", 6666, "Specify an alternative camera port to connect to")
