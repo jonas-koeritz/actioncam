@@ -71,6 +71,7 @@ func main() {
 				case sig := <-signalChannel:
 					log.Printf("Got signal %s, exiting...\n", sig)
 					cancel()
+					os.Exit(0)
 				}
 			}(cancel)
 

@@ -20,6 +20,8 @@ type RTPRelay struct {
 	context    context.Context
 }
 
+var close bool
+
 // CreateRTPRelay creates a UDP listener that handles live data
 // from the camera and forwards it as an RTP stream
 func CreateRTPRelay(ctx context.Context, targetAddress net.IP, targetPort int) *RTPRelay {
@@ -28,8 +30,10 @@ func CreateRTPRelay(ctx context.Context, targetAddress net.IP, targetPort int) *
 	if err != nil {
 		log.Printf("ERROR: %s\n", err)
 	}
-
+	
+	close = false
 	relay := RTPRelay{
+		close: false,
 		targetIP:   targetAddress,
 		targetPort: targetPort,
 		listener:   conn,
@@ -66,76 +70,77 @@ func handleCameraStream(relay RTPRelay, conn net.PacketConn) {
 
 	frameBuffer := bytes.Buffer{}
 	packetBuffer := bytes.Buffer{}
-
-	for {
-		conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-
-		select {
-		case <-relay.context.Done():
-			log.Println("Context Done")
-			rtpConn.Close()
-			relay.listener.Close()
-			break
-		default:
-			if relay.close {
+	T:
+		for {
+			conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+			
+			select {
+			case <-relay.context.Done():
+				log.Println("Context Done")
 				rtpConn.Close()
 				relay.listener.Close()
-				break
-			}
+				break T
+			default:
+				if close {
+					rtpConn.Close()
+					relay.listener.Close()
+					break T
+				}
+				
+				conn.ReadFrom(buffer)
+				packetReader.Reset(buffer)
 
-			conn.ReadFrom(buffer)
-			packetReader.Reset(buffer)
+				binary.Read(packetReader, binary.BigEndian, &header)
 
-			binary.Read(packetReader, binary.BigEndian, &header)
-
-			if header.Magic != 0xBCDE {
-				log.Printf("Received message with invalid magic (%x).", header.Magic)
-				break
-			}
-
-			if header.Length > 0 {
-				payload = make([]byte, header.Length)
-				_, err := io.ReadFull(packetReader, payload)
-				if err != nil {
-					log.Printf("Read Error: %s\n", err)
+				if header.Magic != 0xBCDE {
+					log.Printf("Received message with invalid magic (%x).", header.Magic)
 					break
 				}
-			} else {
-				payload = []byte{}
-			}
 
-			switch header.MessageType {
-			case 0x0001: // H.264 Data
-				frameBuffer.Write(payload)
-			case 0x0002: // Time
-				// Append the Framebuffer
-				packetBuffer.Write(frameBuffer.Bytes())
+				if header.Length > 0 {
+					payload = make([]byte, header.Length)
+					_, err := io.ReadFull(packetReader, payload)
+					if err != nil {
+						log.Printf("Read Error: %s\n", err)
+						break
+					}
+				} else {
+					payload = []byte{}
+				}
 
-				// Send out the packet
-				rtpConn.Write(packetBuffer.Bytes())
+				switch header.MessageType {
+				case 0x0001: // H.264 Data
+					frameBuffer.Write(payload)
+				case 0x0002: // Time
+					// Append the Framebuffer
+					packetBuffer.Write(frameBuffer.Bytes())
 
-				// Prepare the next packet
-				packetBuffer.Reset()
-				packetBuffer.Write([]byte{0x80, 0x63})
-				binary.Write(&packetBuffer, binary.BigEndian, sequenceNumber+1)
-				binary.Write(&packetBuffer, binary.BigEndian, (uint32)(elapsed)*90)
-				binary.Write(&packetBuffer, binary.BigEndian, (uint64(0)))
+					// Send out the packet
+					rtpConn.Write(packetBuffer.Bytes())
 
-				// Reset the Framebuffer
-				frameBuffer.Reset()
-				sequenceNumber++
+					// Prepare the next packet
+					packetBuffer.Reset()
+					packetBuffer.Write([]byte{0x80, 0x63})
+					binary.Write(&packetBuffer, binary.BigEndian, sequenceNumber+1)
+					binary.Write(&packetBuffer, binary.BigEndian, (uint32)(elapsed)*90)
+					binary.Write(&packetBuffer, binary.BigEndian, (uint64(0)))
 
-				elapsed = binary.LittleEndian.Uint32(payload[12:])
-			default:
-				log.Printf("Received Unknown Message: %+v\n", header)
-				log.Printf("Payload:\n%s\n", hex.Dump(payload))
+					// Reset the Framebuffer
+					frameBuffer.Reset()
+					sequenceNumber++
+
+					elapsed = binary.LittleEndian.Uint32(payload[12:])
+				default:
+					log.Printf("Received Unknown Message: %+v\n", header)
+					log.Printf("Payload:\n%s\n", hex.Dump(payload))
+				}
 			}
 		}
-	}
 }
 
 // Stop stops listening for packets
 func (r *RTPRelay) Stop() {
-	r.listener.Close()
+	close = true
 	r.close = true
+	r.listener.Close()
 }
