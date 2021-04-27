@@ -311,7 +311,7 @@ func main() {
 
 	var fetch = &cobra.Command{
 		Use:   "fetch [Cameras IP Address]",
-		Short: "List files stored on the cameras SD-Card",
+		Short: "Download files from the cameras SD-Card",
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			files, err := camera.GetFileList()
